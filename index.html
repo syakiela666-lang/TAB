@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Tulis tab gitar di HP. PWA offline guitar tab editor.">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TabGitar">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <title>Tab Gitar Writer</title>
+  <style>
+    /* ===== RESET ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; user-select: none; -webkit-user-select: none; }
+    
+    body { background-color: #fff; color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+
+    #app-wrapper {
+      position: absolute; top: 50%; left: 50%;
+      background-color: #fff;
+      transform-origin: center center;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ===== PORTRAIT VIEW (Daftar Tab & Preview) ===== */
+    #portrait-view { flex: 1; display: flex; flex-direction: column; padding: 24px; }
+
+    .portrait-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .portrait-header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+
+    .btn-action {
+      background-color: #000; color: #fff; border: 2px solid #000;
+      padding: 16px; font-size: 18px; font-weight: bold;
+      border-radius: 8px; cursor: pointer; transition: all 0.15s;
+      width: 100%; text-align: center;
+    }
+    .btn-action:active { background-color: #fff; color: #000; }
+
+    .btn-small {
+      background-color: #fff; color: #000; border: 2px solid #000;
+      padding: 8px 14px; font-size: 13px; font-weight: bold;
+      border-radius: 6px; cursor: pointer;
+    }
+    .btn-small:active { background-color: #000; color: #fff; }
+
+    /* Saved tabs list */
+    .tabs-list { flex: 1; overflow-y: auto; margin-bottom: 16px; }
+
+    .tab-card {
+      border: 2px solid #000; border-radius: 8px; padding: 14px 16px;
+      margin-bottom: 10px; cursor: pointer; transition: all 0.1s;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .tab-card:active { background-color: #000; color: #fff; }
+    .tab-card-info { flex: 1; }
+    .tab-card-title { font-weight: 700; font-size: 15px; }
+    .tab-card-meta { font-size: 12px; color: #666; margin-top: 2px; }
+    .tab-card:active .tab-card-meta { color: #ccc; }
+    .tab-card-delete { padding: 6px 10px; font-size: 16px; border: none; background: transparent; cursor: pointer; }
+
+    /* Tab preview */
+    .tab-preview-area {
+      border: 2px solid #000; border-radius: 8px; padding: 16px 20px;
+      margin-bottom: 16px; position: relative; min-height: 130px;
+      overflow-x: auto; overflow-y: hidden;
+    }
+    .preview-tab-group { position: relative; height: 100px; min-width: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+    .preview-string-line { height: 2px; background-color: #000; width: 100%; position: relative; }
+    .preview-note { position: absolute; top: -10px; background-color: #fff; padding: 0 2px; font-family: monospace; font-size: 14px; color: #000; font-weight: bold; z-index: 10; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    .empty-state-icon { font-size: 48px; margin-bottom: 12px; display: block; }
+    .empty-state-text { font-size: 15px; font-weight: 500; }
+
+    /* ===== LANDSCAPE VIEW (Editor) ===== */
+    #landscape-view { flex: 1; display: none; flex-direction: column; padding: 6px 16px; background-color: #fff; }
+
+    .landscape-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+    
+    .btn-back {
+      background-color: #000; color: #fff; border: 2px solid #000;
+      padding: 6px 12px; border-radius: 5px; font-size: 12px;
+      font-weight: bold; cursor: pointer; white-space: nowrap;
+    }
+    .btn-back:active { background-color: #333; }
+
+    .title-input {
+      flex: 1; border: 2px solid #000; border-radius: 5px;
+      padding: 6px 10px; font-size: 13px; font-weight: 600;
+      text-align: center; outline: none; min-width: 0;
+    }
+    .title-input:focus { border-color: #4338CA; }
+
+    /* Writer Toolbar */
+    .writer-toolbar { display: flex; gap: 5px; margin-bottom: 6px; flex-wrap: wrap; align-items: center; }
+    
+    .btn-tool {
+      background-color: #fff; color: #000; border: 2px solid #000;
+      padding: 5px 9px; border-radius: 5px; font-size: 12px;
+      font-weight: bold; cursor: pointer; display: flex;
+      justify-content: center; align-items: center; gap: 3px;
+      white-space: nowrap;
+    }
+    .btn-tool:active { background-color: #000; color: #fff; }
+    .btn-tool.effect-active { background-color: #000; color: #fff; }
+    .btn-tool.play-btn { background-color: #000; color: #fff; }
+
+    .toolbar-spacer { flex-grow: 1; }
+
+    /* Writer Area (Tab Display - Top) */
+    .writer-area-container {
+      height: 90px; border: none; border-radius: 8px;
+      margin-bottom: 2px; overflow-x: auto; overflow-y: hidden;
+      position: relative; background: #fff; padding: 4px 14px;
+      scroll-behavior: smooth;
+    }
+
+    #writer-tab-group {
+      position: relative; height: 100%; min-width: 100%;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+
+    .writer-line { height: 2px; background-color: #000; width: 100%; position: relative; }
+
+    .tab-note {
+      position: absolute; top: -10px; background-color: #fff;
+      padding: 0 2px; font-family: monospace; font-size: 14px;
+      color: #000; font-weight: bold; z-index: 10;
+    }
+
+    #tab-cursor {
+      position: absolute; top: -6px; bottom: -6px; width: 22px;
+      background-color: rgba(0, 0, 0, 0.06); border: 1.5px dashed #000;
+      border-radius: 3px; z-index: 0; transition: left 0.12s ease;
+    }
+    #cursor-time-label {
+      position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+      font-size: 9px; font-weight: bold; background: #000; color: #fff;
+      padding: 1px 3px; border-radius: 3px; white-space: nowrap; z-index: 100;
+    }
+
+    /* Fretboard */
+    .fretboard-wrapper { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .fretboard-grid { display: flex; flex-direction: column; flex: 1; }
+    
+    .fret-string-row { display: flex; flex: 1; }
+
+    .fret-cell {
+      flex: 1; position: relative; display: flex;
+      justify-content: center; align-items: center;
+    }
+    .fret-cell::before {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0;
+      height: 2px; background-color: #000; transform: translateY(-50%); z-index: 1;
+    }
+    .fret-cell:first-child::before {
+      left: 50%;
+    }
+    .fret-cell:last-child::before {
+      right: 50%;
+    }
+
+    .fret-circle {
+      width: 22px; height: 22px; border-radius: 50%;
+      background-color: #fff; border: 1px solid #000; color: #000;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 10px; font-weight: bold; z-index: 4;
+      cursor: pointer; transition: all 0.08s;
+    }
+    .fret-circle:active { background-color: #000; color: #fff; transform: scale(1.15); }
+
+    .fret-numbers-row { display: flex; margin-top: 3px; flex-shrink: 0; padding-bottom: 5px; }
+    .fret-number-label { flex: 1; text-align: center; font-weight: bold; font-size: 10px; color: #000; }
+
+    /* ===== TOAST ===== */
+    .toast-msg {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #000; color: #fff; padding: 10px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; opacity: 0; transition: all 0.25s;
+      z-index: 999; pointer-events: none;
+    }
+    .toast-msg.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== New Tab Dialog ===== */
+    .dialog-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.4);
+      display: none; justify-content: center; align-items: center; z-index: 50;
+    }
+    .dialog-overlay.open { display: flex; }
+    .dialog-box {
+      background: #fff; border: 2px solid #000; border-radius: 12px;
+      padding: 24px; width: 85%; max-width: 380px;
+    }
+    .dialog-box h2 { font-size: 18px; margin-bottom: 16px; }
+    .dialog-input {
+      width: 100%; border: 2px solid #000; border-radius: 6px;
+      padding: 10px 12px; font-size: 14px; font-weight: 500;
+      outline: none; margin-bottom: 12px;
+    }
+    .dialog-input:focus { border-color: #4338CA; }
+    .dialog-actions { display: flex; gap: 10px; }
+    .dialog-actions .btn-action { flex: 1; padding: 12px; font-size: 15px; }
+    .dialog-actions .btn-cancel {
+      flex: 1; padding: 12px; font-size: 15px; font-weight: bold;
+      border: 2px solid #000; border-radius: 8px; background: #fff;
+      color: #000; cursor: pointer;
+    }
+    .dialog-actions .btn-cancel:active { background: #eee; }
+  </style>
+</head>
+<body>
+
+<div id="app-wrapper">
+
+  <!-- ===== PORTRAIT VIEW ===== -->
+  <div id="portrait-view">
+    <div class="portrait-header">
+      <h1>🎸 Tab Gitar</h1>
+      <button class="btn-small" onclick="exportCurrentTab()">📋 Copy</button>
+    </div>
+
+    <!-- Preview area for current/selected tab -->
+    <div class="tab-preview-area" id="tab-preview-area">
+      <div class="preview-tab-group" id="preview-tab-group">
+        <div class="preview-string-line"></div>
+        <div class="preview-string-line"></div>
+        <div class="preview-string-line"></div>
+        <div class="preview-string-line"></div>
+        <div class="preview-string-line"></div>
+        <div class="preview-string-line"></div>
+      </div>
+    </div>
+
+    <!-- Saved tabs list -->
+    <div class="tabs-list" id="tabs-list">
+      <div class="empty-state">
+        <span class="empty-state-icon">🎵</span>
+        <span class="empty-state-text">Belum ada tab tersimpan</span>
+      </div>
+    </div>
+
+    <button class="btn-action" onclick="openNewTabDialog()">+ TULIS TAB BARU</button>
+  </div>
+
+  <!-- ===== LANDSCAPE VIEW (EDITOR) ===== -->
+  <div id="landscape-view">
+    <div class="landscape-header">
+      <button class="btn-back" onclick="saveAndGoBack()">✕ Simpan & Tutup</button>
+      <input type="text" id="title-input" class="title-input" placeholder="Judul tab..." maxlength="60" autocomplete="off" spellcheck="false">
+      <button class="btn-back" onclick="clearTabWriter()">Hapus Semua</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="writer-toolbar">
+      <button class="btn-tool" onclick="stepBack()">◀ Mundur</button>
+      <button class="btn-tool" onclick="stepForward()">Maju ▶</button>
+      <button class="btn-tool" onclick="deleteCurrentColumn()">✕ Hapus</button>
+      <button class="btn-tool play-btn" onclick="playTabSequence()">▶ Play</button>
+      
+      <div class="toolbar-spacer"></div>
+
+      <button class="btn-tool effect-btn effect-active" id="eff-none" onclick="setEffect('')">Normal</button>
+      <button class="btn-tool effect-btn" id="eff-h" onclick="setEffect('h')">h</button>
+      <button class="btn-tool effect-btn" id="eff-p" onclick="setEffect('p')">p</button>
+      <button class="btn-tool effect-btn" id="eff-slide" onclick="setEffect('/')">/</button>
+      <button class="btn-tool effect-btn" id="eff-b" onclick="setEffect('b')">b</button>
+    </div>
+
+    <!-- Tab writer area (top) -->
+    <div class="writer-area-container" id="writer-scroll-area">
+      <div id="writer-tab-group">
+        <div id="tab-cursor"><div id="cursor-time-label">0.00s</div></div>
+        <div class="writer-line"></div>
+        <div class="writer-line"></div>
+        <div class="writer-line"></div>
+        <div class="writer-line"></div>
+        <div class="writer-line"></div>
+        <div class="writer-line"></div>
+      </div>
+    </div>
+
+    <!-- Fretboard (bottom) -->
+    <div class="fretboard-wrapper">
+      <div class="fretboard-grid" id="fretboard-grid"></div>
+      <div class="fret-numbers-row" id="fret-numbers-row"></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW TAB DIALOG ===== -->
+  <div class="dialog-overlay" id="new-tab-dialog">
+    <div class="dialog-box">
+      <h2>Tab Baru</h2>
+      <input type="text" id="new-tab-title" class="dialog-input" placeholder="Judul lagu..." maxlength="60" autocomplete="off">
+      <input type="text" id="new-tab-artist" class="dialog-input" placeholder="Artis (opsional)" maxlength="40" autocomplete="off">
+      <div class="dialog-actions">
+        <button class="btn-cancel" onclick="closeNewTabDialog()">Batal</button>
+        <button class="btn-action" onclick="createAndOpenTab()">Mulai Tulis</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-msg" id="toast"></div>
+
+</div>
+
+<script>
+// ===== APP STATE =====
+let isLandscape = false;
+let audioContext = null;
+let activeEffect = '';
+let currentTabId = null;
+let appScale = 1;
+
+const START_POS = 18;
+let tabCursorPosition = START_POS;
+const TAB_SPACING = 28;
+const MAX_FRET = 20; // show fret 0-20 on mobile for usability
+
+const STRING_TUNING = ['e', 'B', 'G', 'D', 'A', 'E'];
+const stringBaseFrequencies = [329.63, 246.94, 196.00, 146.83, 110.00, 82.41];
+
+const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const STRING_BASE_NOTES = [4, 11, 7, 2, 9, 4]; // e, B, G, D, A, E
+function getNoteName(stringIndex, fret) {
+  const baseNote = STRING_BASE_NOTES[stringIndex];
+  return NOTES[(baseNote + fret) % 12];
+}
+
+// ===== RESIZE & LAYOUT =====
+function resizeApp() {
+  const wrapper = document.getElementById('app-wrapper');
+  const targetWidth = isLandscape ? 720 : 357;
+  const targetHeight = isLandscape ? 357 : 720;
+  appScale = Math.min(window.innerWidth / targetWidth, window.innerHeight / targetHeight);
+  
+  wrapper.style.width = targetWidth + 'px';
+  wrapper.style.height = targetHeight + 'px';
+  wrapper.style.transform = `translate(-50%, -50%) scale(${appScale})`;
+  
+  if (isLandscape) updateCursorVisual();
+}
+window.addEventListener('resize', resizeApp);
+
+// ===== VIEW SWITCHING =====
+function switchToLandscape() {
+  isLandscape = true;
+  document.getElementById('portrait-view').style.display = 'none';
+  document.getElementById('landscape-view').style.display = 'flex';
+  resizeApp();
+  
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === 'suspended') audioContext.resume();
+  
+  try { document.documentElement.requestFullscreen().then(() => screen.orientation.lock("landscape")).catch(()=>{}); } catch(e) {}
+}
+
+function switchToPortrait() {
+  isLandscape = false;
+  document.getElementById('landscape-view').style.display = 'none';
+  document.getElementById('portrait-view').style.display = 'flex';
+  resizeApp();
+  try { document.exitFullscreen().catch(()=>{}); } catch(e) {}
+  try { screen.orientation.unlock(); } catch(e) {}
+}
+
+// ===== INDEXEDDB STORAGE =====
+const DB_NAME = 'TabGitarDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'tabs';
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_NAME)) {
+        d.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(); };
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function saveTab(tabData) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tabData.updatedAt = Date.now();
+    tx.objectStore(STORE_NAME).put(tabData);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+
+function getAllTabs() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).getAll();
+    req.onsuccess = () => resolve(req.result.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function getTab(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function deleteTab(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+
+// ===== TAB DATA HELPERS =====
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function collectWriterNotes() {
+  const writerLines = document.querySelectorAll('.writer-line');
+  const notes = [];
+  writerLines.forEach((line, stringIdx) => {
+    Array.from(line.children).forEach(span => {
+      notes.push({
+        stringIndex: stringIdx,
+        left: parseInt(span.style.left),
+        text: span.textContent
+      });
+    });
+  });
+  return notes;
+}
+
+function loadNotesToWriter(notes) {
+  const writerLines = document.querySelectorAll('.writer-line');
+  writerLines.forEach(l => l.innerHTML = '');
+  
+  let maxLeft = START_POS;
+  notes.forEach(n => {
+    const line = writerLines[n.stringIndex];
+    if (!line) return;
+    const span = document.createElement('span');
+    span.className = 'tab-note';
+    span.textContent = n.text;
+    span.style.left = n.left + 'px';
+    line.appendChild(span);
+    if (n.left > maxLeft) maxLeft = n.left;
+  });
+  
+  // Expand writer area if needed
+  const tabGroup = document.getElementById('writer-tab-group');
+  if (maxLeft > 200) tabGroup.style.minWidth = (maxLeft + 100) + 'px';
+}
+
+function loadNotesToPreview(notes) {
+  const lines = document.querySelectorAll('.preview-string-line');
+  lines.forEach(l => { 
+    // Remove only note spans, keep the line itself
+    Array.from(l.children).forEach(c => c.remove());
+  });
+  
+  notes.forEach(n => {
+    const line = lines[n.stringIndex];
+    if (!line) return;
+    const span = document.createElement('span');
+    span.className = 'preview-note';
+    span.textContent = n.text;
+    span.style.left = n.left + 'px';
+    line.appendChild(span);
+  });
+}
+
+// ===== TAB LIST UI =====
+async function refreshTabList() {
+  const listEl = document.getElementById('tabs-list');
+  try {
+    const tabs = await getAllTabs();
+    if (tabs.length === 0) {
+      listEl.innerHTML = '<div class="empty-state"><span class="empty-state-icon">🎵</span><span class="empty-state-text">Belum ada tab tersimpan</span></div>';
+      // Clear preview
+      loadNotesToPreview([]);
+      return;
+    }
+    
+    listEl.innerHTML = tabs.map(t => `
+      <div class="tab-card" data-id="${t.id}">
+        <div class="tab-card-info" onclick="openExistingTab('${t.id}')">
+          <div class="tab-card-title">${t.title || 'Untitled'}</div>
+          <div class="tab-card-meta">${t.artist ? t.artist + ' · ' : ''}${formatDate(t.updatedAt)}</div>
+        </div>
+        <button class="tab-card-delete" onclick="event.stopPropagation(); confirmDeleteTab('${t.id}')">🗑</button>
+      </div>
+    `).join('');
+    
+    // Show first tab in preview
+    if (tabs.length > 0) {
+      loadNotesToPreview(tabs[0].notes || []);
+      currentTabId = tabs[0].id;
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = Date.now();
+  const diff = now - ts;
+  if (diff < 60000) return 'Baru saja';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm lalu';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'j lalu';
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+// ===== NEW TAB DIALOG =====
+function openNewTabDialog() {
+  document.getElementById('new-tab-dialog').classList.add('open');
+  document.getElementById('new-tab-title').value = '';
+  document.getElementById('new-tab-artist').value = '';
+  document.getElementById('new-tab-title').focus();
+}
+
+function closeNewTabDialog() {
+  document.getElementById('new-tab-dialog').classList.remove('open');
+}
+
+async function createAndOpenTab() {
+  const title = document.getElementById('new-tab-title').value.trim() || 'Untitled';
+  const artist = document.getElementById('new-tab-artist').value.trim();
+  
+  const tab = {
+    id: generateId(),
+    title: title,
+    artist: artist,
+    notes: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  await saveTab(tab);
+  currentTabId = tab.id;
+  closeNewTabDialog();
+  
+  // Reset writer
+  clearTabWriterSilent();
+  document.getElementById('title-input').value = title;
+  switchToLandscape();
+}
+
+async function openExistingTab(id) {
+  const tab = await getTab(id);
+  if (!tab) return;
+  
+  currentTabId = tab.id;
+  document.getElementById('title-input').value = tab.title || '';
+  clearTabWriterSilent();
+  loadNotesToWriter(tab.notes || []);
+  tabCursorPosition = START_POS;
+  updateCursorVisual();
+  switchToLandscape();
+}
+
+async function saveAndGoBack() {
+  if (currentTabId) {
+    const tab = await getTab(currentTabId);
+    if (tab) {
+      tab.title = document.getElementById('title-input').value.trim() || 'Untitled';
+      tab.notes = collectWriterNotes();
+      await saveTab(tab);
+      showToast('Tab tersimpan ✓');
+    }
+  }
+  await refreshTabList();
+  switchToPortrait();
+}
+
+async function confirmDeleteTab(id) {
+  if (confirm('Hapus tab ini?')) {
+    await deleteTab(id);
+    if (currentTabId === id) currentTabId = null;
+    await refreshTabList();
+    showToast('Tab dihapus');
+  }
+}
+
+// ===== EXPORT =====
+async function exportCurrentTab() {
+  let notes = [];
+  let title = '';
+  
+  if (currentTabId) {
+    const tab = await getTab(currentTabId);
+    if (tab) {
+      notes = tab.notes || [];
+      title = tab.title || '';
+    }
+  }
+  
+  if (notes.length === 0) {
+    showToast('Tidak ada tab untuk di-copy');
+    return;
+  }
+  
+  // Convert notes to text format
+  let text = title ? `${title}\n\n` : '';
+  
+  // Group notes by position
+  const positions = [...new Set(notes.map(n => n.left))].sort((a, b) => a - b);
+  const lineWidth = 60;
+  
+  // Build line by line
+  for (let s = 0; s < 6; s++) {
+    let line = STRING_TUNING[s] + '|';
+    positions.forEach(pos => {
+      const note = notes.find(n => n.stringIndex === s && n.left === pos);
+      line += note ? note.text : '-';
+    });
+    line += '|';
+    text += line + '\n';
+  }
+  
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Tab di-copy ke clipboard ✓');
+  } catch(e) {
+    showToast('Gagal copy');
+  }
+}
+
+// ===== EFFECTS =====
+function setEffect(eff) {
+  activeEffect = eff;
+  document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('effect-active'));
+  const map = { '': 'eff-none', 'h': 'eff-h', 'p': 'eff-p', '/': 'eff-slide', 'b': 'eff-b' };
+  document.getElementById(map[eff]).classList.add('effect-active');
+}
+
+// ===== AUDIO =====
+function playGuitarNote(stringIndex, fretNumber, duration = 1.2) {
+  if (!audioContext) return;
+  const freq = stringBaseFrequencies[stringIndex] * Math.pow(2, fretNumber / 12);
+  
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+  gain.gain.setValueAtTime(0.8, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+  osc.start();
+  osc.stop(audioContext.currentTime + duration);
+}
+
+function playTabSequence() {
+  if (!audioContext) return;
+  if (audioContext.state === 'suspended') audioContext.resume();
+  
+  const writerLines = document.querySelectorAll('.writer-line');
+  let notesMap = [];
+  
+  writerLines.forEach((line, si) => {
+    Array.from(line.children).forEach(span => {
+      const leftPos = parseInt(span.style.left);
+      const fretNum = parseInt(span.textContent);
+      if (isNaN(fretNum)) return;
+      
+      let existing = notesMap.find(item => item.pos === leftPos);
+      if (!existing) { existing = { pos: leftPos, notes: [] }; notesMap.push(existing); }
+      existing.notes.push({ stringIndex: si, fretNumber: fretNum });
+    });
+  });
+  
+  notesMap.sort((a, b) => a.pos - b.pos);
+  notesMap.forEach((item) => {
+    let k = Math.round((item.pos - START_POS) / TAB_SPACING);
+    if (k < 0) k = 0;
+    setTimeout(() => {
+      item.notes.forEach(n => playGuitarNote(n.stringIndex, n.fretNumber, 0.7));
+    }, k * 320);
+  });
+}
+
+// ===== CURSOR & WRITING =====
+function updateCursorVisual() {
+  const cursor = document.getElementById('tab-cursor');
+  if (!cursor) return;
+  cursor.style.left = (tabCursorPosition - 6) + 'px';
+  
+  const timeLabel = document.getElementById('cursor-time-label');
+  if (timeLabel) {
+    let k = Math.round((tabCursorPosition - START_POS) / TAB_SPACING);
+    if (k < 0) k = 0;
+    timeLabel.textContent = (k * 0.32).toFixed(2) + 's';
+  }
+  
+  const scrollArea = document.getElementById('writer-scroll-area');
+  const tabGroup = document.getElementById('writer-tab-group');
+  
+  if (tabCursorPosition > tabGroup.offsetWidth - 40) {
+    tabGroup.style.minWidth = (tabCursorPosition + 80) + 'px';
+  }
+  if (tabCursorPosition > scrollArea.scrollLeft + scrollArea.clientWidth - 40) {
+    scrollArea.scrollLeft = tabCursorPosition - scrollArea.clientWidth + 80;
+  } else if (tabCursorPosition < scrollArea.scrollLeft) {
+    scrollArea.scrollLeft = Math.max(0, tabCursorPosition - 40);
+  }
+}
+
+function stepForward() { tabCursorPosition += TAB_SPACING; updateCursorVisual(); }
+function stepBack() { if (tabCursorPosition > START_POS) { tabCursorPosition -= TAB_SPACING; updateCursorVisual(); } }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const writerTabGroup = document.getElementById('writer-tab-group');
+  if (writerTabGroup) {
+    writerTabGroup.addEventListener('click', (e) => {
+      const rect = writerTabGroup.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left) / appScale;
+      
+      let k = Math.round((clickX - START_POS) / TAB_SPACING);
+      if (k < 0) k = 0;
+      
+      tabCursorPosition = START_POS + k * TAB_SPACING;
+      updateCursorVisual();
+    });
+  }
+});
+
+function deleteCurrentColumn() {
+  const writerLines = document.querySelectorAll('.writer-line');
+  writerLines.forEach(line => {
+    const noteToRemove = Array.from(line.children).find(el => el.style.left === tabCursorPosition + 'px');
+    if (noteToRemove) noteToRemove.remove();
+  });
+}
+
+function clearTabWriter() {
+  if (confirm('Hapus semua not?')) clearTabWriterSilent();
+}
+
+function clearTabWriterSilent() {
+  document.querySelectorAll('.writer-line').forEach(l => l.innerHTML = '');
+  tabCursorPosition = START_POS;
+  const tabGroup = document.getElementById('writer-tab-group');
+  if (tabGroup) tabGroup.style.minWidth = '100%';
+  updateCursorVisual();
+}
+
+function writeToTab(stringIndex, fretNumber) {
+  const writerLines = document.querySelectorAll('.writer-line');
+  const targetLine = writerLines[stringIndex];
+  if (!targetLine) return;
+  
+  const textValue = fretNumber + activeEffect;
+  const existing = Array.from(targetLine.children).find(el => el.style.left === tabCursorPosition + 'px');
+  
+  if (existing) {
+    if (existing.textContent === textValue) {
+      existing.remove(); // Toggle off
+    } else {
+      existing.textContent = textValue; // Update
+    }
+  } else {
+    const span = document.createElement('span');
+    span.className = 'tab-note';
+    span.textContent = textValue;
+    span.style.left = tabCursorPosition + 'px';
+    targetLine.appendChild(span);
+  }
+}
+
+// ===== FRETBOARD =====
+function createFretboard() {
+  const grid = document.getElementById('fretboard-grid');
+  const numbers = document.getElementById('fret-numbers-row');
+  grid.innerHTML = '';
+  numbers.innerHTML = '';
+  
+  for (let f = 0; f <= MAX_FRET; f++) {
+    const label = document.createElement('div');
+    label.className = 'fret-number-label';
+    label.textContent = f;
+    numbers.appendChild(label);
+  }
+  
+  for (let s = 0; s < 6; s++) {
+    const row = document.createElement('div');
+    row.className = 'fret-string-row';
+    
+    for (let f = 0; f <= MAX_FRET; f++) {
+      const cell = document.createElement('div');
+      cell.className = 'fret-cell';
+      
+      const circle = document.createElement('div');
+      circle.className = 'fret-circle';
+      circle.textContent = getNoteName(s, f);
+      
+      const action = (e) => {
+        e.preventDefault();
+        playGuitarNote(s, f);
+        writeToTab(s, f);
+      };
+      circle.onmousedown = action;
+      circle.ontouchstart = action;
+      
+      cell.appendChild(circle);
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  }
+}
+
+// ===== TOAST =====
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== INIT =====
+async function init() {
+  await openDB();
+  createFretboard();
+  resizeApp();
+  updateCursorVisual();
+  await refreshTabList();
+}
+
+init();
+
+// Register SW
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+}
+</script>
+
+</body>
+</html>
