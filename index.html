@@ -94,21 +94,20 @@
     }
     .title-input:focus { border-color: #4338CA; }
 
-    /* Writer Toolbar */
-    .writer-toolbar { display: flex; gap: 5px; margin-bottom: 6px; flex-wrap: wrap; align-items: center; }
+    .landscape-body { display: flex; flex: 1; gap: 8px; min-height: 0; }
+    .landscape-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+    .landscape-sidebar { display: flex; flex-direction: column; gap: 4px; width: 32px; justify-content: flex-start; }
     
     .btn-tool {
       background-color: #fff; color: #000; border: 2px solid #000;
-      padding: 5px 9px; border-radius: 5px; font-size: 12px;
+      padding: 6px 0; border-radius: 5px; font-size: 13px;
       font-weight: bold; cursor: pointer; display: flex;
-      justify-content: center; align-items: center; gap: 3px;
-      white-space: nowrap;
+      justify-content: center; align-items: center;
+      width: 100%;
     }
     .btn-tool:active { background-color: #000; color: #fff; }
     .btn-tool.effect-active { background-color: #000; color: #fff; }
     .btn-tool.play-btn { background-color: #000; color: #fff; }
-
-    .toolbar-spacer { flex-grow: 1; }
 
     /* Writer Area (Tab Display - Top) */
     .writer-area-container {
@@ -137,7 +136,7 @@
       border-radius: 3px; z-index: 0; transition: left 0.12s ease;
     }
     #cursor-time-label {
-      position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+      position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
       font-size: 9px; font-weight: bold; background: #000; color: #fff;
       padding: 1px 3px; border-radius: 3px; white-space: nowrap; z-index: 100;
     }
@@ -253,39 +252,37 @@
       <button class="btn-back" onclick="clearTabWriter()">Hapus Semua</button>
     </div>
 
-    <!-- Controls -->
-    <div class="writer-toolbar">
-      <button class="btn-tool" onclick="stepBack()">◀ Mundur</button>
-      <button class="btn-tool" onclick="stepForward()">Maju ▶</button>
-      <button class="btn-tool" onclick="deleteCurrentColumn()">✕ Hapus</button>
-      <button class="btn-tool play-btn" onclick="playTabSequence()">▶ Play</button>
-      
-      <div class="toolbar-spacer"></div>
+    <div class="landscape-body">
+      <div class="landscape-main">
+        <!-- Tab writer area (top) -->
+        <div class="writer-area-container" id="writer-scroll-area">
+          <div id="writer-tab-group">
+            <div id="tab-cursor"><div id="cursor-time-label">0.00s</div></div>
+            <div class="writer-line"></div>
+            <div class="writer-line"></div>
+            <div class="writer-line"></div>
+            <div class="writer-line"></div>
+            <div class="writer-line"></div>
+            <div class="writer-line"></div>
+          </div>
+        </div>
 
-      <button class="btn-tool effect-btn effect-active" id="eff-none" onclick="setEffect('')">Normal</button>
-      <button class="btn-tool effect-btn" id="eff-h" onclick="setEffect('h')">h</button>
-      <button class="btn-tool effect-btn" id="eff-p" onclick="setEffect('p')">p</button>
-      <button class="btn-tool effect-btn" id="eff-slide" onclick="setEffect('/')">/</button>
-      <button class="btn-tool effect-btn" id="eff-b" onclick="setEffect('b')">b</button>
-    </div>
-
-    <!-- Tab writer area (top) -->
-    <div class="writer-area-container" id="writer-scroll-area">
-      <div id="writer-tab-group">
-        <div id="tab-cursor"><div id="cursor-time-label">0.00s</div></div>
-        <div class="writer-line"></div>
-        <div class="writer-line"></div>
-        <div class="writer-line"></div>
-        <div class="writer-line"></div>
-        <div class="writer-line"></div>
-        <div class="writer-line"></div>
+        <!-- Fretboard (bottom) -->
+        <div class="fretboard-wrapper">
+          <div class="fretboard-grid" id="fretboard-grid"></div>
+          <div class="fret-numbers-row" id="fret-numbers-row"></div>
+        </div>
       </div>
-    </div>
-
-    <!-- Fretboard (bottom) -->
-    <div class="fretboard-wrapper">
-      <div class="fretboard-grid" id="fretboard-grid"></div>
-      <div class="fret-numbers-row" id="fret-numbers-row"></div>
+      
+      <div class="landscape-sidebar">
+        <button class="btn-tool" onclick="deleteCurrentColumn()">✕</button>
+        <button class="btn-tool play-btn" onclick="playTabSequence()">▶</button>
+        <button class="btn-tool effect-btn effect-active" id="eff-none" onclick="setEffect('')">N</button>
+        <button class="btn-tool effect-btn" id="eff-h" onclick="setEffect('h')">h</button>
+        <button class="btn-tool effect-btn" id="eff-p" onclick="setEffect('p')">p</button>
+        <button class="btn-tool effect-btn" id="eff-slide" onclick="setEffect('/')">/</button>
+        <button class="btn-tool effect-btn" id="eff-b" onclick="setEffect('b')">b</button>
+      </div>
     </div>
   </div>
 
@@ -315,7 +312,7 @@ let activeEffect = '';
 let currentTabId = null;
 let appScale = 1;
 
-const START_POS = 18;
+const START_POS = 8;
 let tabCursorPosition = START_POS;
 const TAB_SPACING = 28;
 const MAX_FRET = 20; // show fret 0-20 on mobile for usability
