@@ -689,25 +689,31 @@ function playTabSequence() {
   if (notesMap.length === 0) return;
   notesMap.sort((a, b) => a.pos - b.pos);
   
-  const lastItem = notesMap[notesMap.length - 1];
-  const totalK = Math.max(0, Math.round((lastItem.pos - START_POS) / TAB_SPACING));
+  // Filter: only play notes at or after current cursor position
+  const playFrom = tabCursorPosition;
+  const startK = Math.round((playFrom - START_POS) / TAB_SPACING);
+  const filteredNotes = notesMap.filter(item => item.pos >= playFrom);
   
-  notesMap.forEach((item) => {
+  if (filteredNotes.length === 0) return;
+  
+  const lastItem = filteredNotes[filteredNotes.length - 1];
+  const lastK = Math.round((lastItem.pos - START_POS) / TAB_SPACING);
+  
+  filteredNotes.forEach((item) => {
     let k = Math.round((item.pos - START_POS) / TAB_SPACING);
-    if (k < 0) k = 0;
+    let delay = (k - startK) * 320;
+    if (delay < 0) delay = 0;
     setTimeout(() => {
       item.notes.forEach(n => playGuitarNote(n.stringIndex, n.fretNumber, 0.7));
-    }, k * 320);
+    }, delay);
   });
   
-  // Animate cursor
-  tabCursorPosition = START_POS;
-  updateCursorVisual();
-  for (let i = 0; i <= totalK; i++) {
+  // Animate cursor from current position
+  for (let i = startK; i <= lastK; i++) {
     setTimeout(() => {
       tabCursorPosition = START_POS + (i * TAB_SPACING);
       updateCursorVisual();
-    }, i * 320);
+    }, (i - startK) * 320);
   }
 }
 
