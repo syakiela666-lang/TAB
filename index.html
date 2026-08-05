@@ -111,9 +111,9 @@
 
     /* Writer Area (Tab Display - Top) */
     .writer-area-container {
-      height: 90px; border: none; border-radius: 8px;
+      height: 100px; border: none; border-radius: 8px;
       margin-bottom: 2px; overflow-x: auto; overflow-y: hidden;
-      position: relative; background: #fff; padding: 12px 0px 4px 0px;
+      position: relative; background: #fff; padding: 24px 0px 4px 0px;
       scroll-behavior: smooth;
     }
 
@@ -128,16 +128,18 @@
       position: absolute; top: -10px; background-color: #fff;
       padding: 0 2px; font-family: monospace; font-size: 14px;
       color: #000; font-weight: bold; z-index: 10;
+      transform: translateX(-50%);
     }
 
     #tab-cursor {
-      position: absolute; top: -6px; bottom: -6px; width: 22px;
-      background-color: rgba(0, 0, 0, 0.06); border: 1.5px dashed #000;
-      border-radius: 3px; z-index: 5; transition: left 0.12s ease;
+      position: absolute; top: -6px; bottom: -6px; width: 2px;
+      background-color: #3b82f6; border: none;
+      z-index: 5; transition: left 0.12s linear;
+      transform: translateX(-50%);
     }
     #cursor-time-label {
       position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-      font-size: 9px; font-weight: bold; background: #000; color: #fff;
+      font-size: 9px; font-weight: bold; background: #3b82f6; color: #fff;
       padding: 1px 3px; border-radius: 3px; white-space: nowrap; z-index: 100;
     }
 
@@ -276,6 +278,8 @@
       
       <div class="landscape-sidebar">
         <button class="btn-tool" title="Hapus (Delete)" onclick="deleteCurrentColumn()">✕</button>
+        <button class="btn-tool" title="Sisipkan Jarak (Insert Space)" onclick="insertSpace()">⇥</button>
+        <button class="btn-tool" title="Tarik Jarak (Remove Space)" onclick="removeSpace()">⇤</button>
         <button class="btn-tool play-btn" title="Mainkan (Play)" onclick="playTabSequence()">▶</button>
         <button class="btn-tool effect-btn effect-active" id="eff-none" title="Normal" onclick="setEffect('')">N</button>
         <button class="btn-tool effect-btn" id="eff-h" title="Hammer-on" onclick="setEffect('h')">h</button>
@@ -682,7 +686,12 @@ function playTabSequence() {
     });
   });
   
+  if (notesMap.length === 0) return;
   notesMap.sort((a, b) => a.pos - b.pos);
+  
+  const lastItem = notesMap[notesMap.length - 1];
+  const totalK = Math.max(0, Math.round((lastItem.pos - START_POS) / TAB_SPACING));
+  
   notesMap.forEach((item) => {
     let k = Math.round((item.pos - START_POS) / TAB_SPACING);
     if (k < 0) k = 0;
@@ -690,13 +699,23 @@ function playTabSequence() {
       item.notes.forEach(n => playGuitarNote(n.stringIndex, n.fretNumber, 0.7));
     }, k * 320);
   });
+  
+  // Animate cursor
+  tabCursorPosition = START_POS;
+  updateCursorVisual();
+  for (let i = 0; i <= totalK; i++) {
+    setTimeout(() => {
+      tabCursorPosition = START_POS + (i * TAB_SPACING);
+      updateCursorVisual();
+    }, i * 320);
+  }
 }
 
 // ===== CURSOR & WRITING =====
 function updateCursorVisual() {
   const cursor = document.getElementById('tab-cursor');
   if (!cursor) return;
-  cursor.style.left = (tabCursorPosition - 6) + 'px';
+  cursor.style.left = tabCursorPosition + 'px';
   
   const timeLabel = document.getElementById('cursor-time-label');
   if (timeLabel) {
@@ -736,6 +755,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+function insertSpace() {
+  const writerLines = document.querySelectorAll('.writer-line');
+  writerLines.forEach(line => {
+    Array.from(line.children).forEach(span => {
+      const leftPos = parseInt(span.style.left);
+      if (leftPos >= tabCursorPosition) {
+        span.style.left = (leftPos + TAB_SPACING) + 'px';
+      }
+    });
+  });
+  tabCursorPosition += TAB_SPACING;
+  updateCursorVisual();
+}
+
+function removeSpace() {
+  const writerLines = document.querySelectorAll('.writer-line');
+  writerLines.forEach(line => {
+    Array.from(line.children).forEach(span => {
+      const leftPos = parseInt(span.style.left);
+      if (leftPos > tabCursorPosition) {
+        span.style.left = (leftPos - TAB_SPACING) + 'px';
+      }
+    });
+  });
+  updateCursorVisual();
+}
 
 function deleteCurrentColumn() {
   const writerLines = document.querySelectorAll('.writer-line');
